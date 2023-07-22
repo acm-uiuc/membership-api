@@ -108,7 +108,7 @@
         submitBtn.addEventListener("click", () => {
             const input = document.querySelector("#input").value;
             const url =
-                `https://membership.acm.illinois.edu/api/v1/checkMembership?netId=${input}`; // replace with your API endpoint
+                `https://membership.acm.illinois.edu/api/v1/checkMembership?netId=${input.replace("@illinois.edu", "")}`; // replace with your API endpoint
 
             fetch(url)
                 .then(response => {
