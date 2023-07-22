@@ -1,0 +1,121 @@
+AWSTemplateFormatVersion: 2010-09-09
+Description: Membership API
+Transform: AWS::Serverless-2016-10-31
+
+Parameters:
+  LambdaFunctionName:
+    Type: String
+    AllowedPattern: ^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$
+    Default: infra-membership-api-lambda
+  
+  MembershipApiGWName:
+    Type: String
+    AllowedPattern: ^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$
+    Default: infra-membership-api-gw
+  
+  AADSecretName:
+    Type: String
+    AllowedPattern: ^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$
+    Default: infra-membership-api-aad-secret
+
+Resources:
+  # API Lambda
+  MembershipApiLambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../code 
+      AutoPublishAlias: live
+      Runtime: python3.10
+      Description: Membership API Lambda
+      FunctionName: !Ref LambdaFunctionName
+      Handler: api.lambda_handler
+      MemorySize: 2048
+      Role: !GetAtt MembershipApiLambdaIAMRole.Arn
+      Timeout: 60
+
+  MembershipApiLambdaIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      Policies:
+        - PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource:
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${LambdaFunctionName}:*
+          PolicyName: lambda
+        - PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                  - secretsmanager:GetSecretValue
+                Effect: Allow
+                Resource:
+                  - !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${AADSecretName}*
+          PolicyName: lambda-secret
+
+  MembershipApiLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${LambdaFunctionName}
+      RetentionInDays: 7
+
+
+# API Gateway
+  MembershipApiGateway:
+    Type: AWS::Serverless::Api
+    DependsOn: 
+      - MembershipApiLambdaFunction
+    Properties:
+      Name: !Ref MembershipApiGWName
+      Description: Membership API Gateway
+      AlwaysDeploy: True
+      DefinitionBody:
+        Fn::Transform:
+          Name: AWS::Include
+          Parameters:
+            Location: ../docs/swagger.yml
+      Domain: 
+        DomainName: membership.acm.illinois.edu
+        CertificateArn: >-
+          arn:aws:acm:us-east-1:298118738376:certificate/93955040-5806-4188-b01f-9c16eddb78e4
+      StageName: default
+
+  APILambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Fn::GetAtt:
+        - MembershipApiLambdaFunction
+        - Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+        - ''
+        - - 'arn:aws:execute-api:'
+          - !Ref AWS::Region
+          - ":"
+          - !Ref AWS::AccountId
+          - ":"
+          - !Ref MembershipApiGateway
+          - "/*/*/*"
+          
+Outputs:
+  ApiUrl:
+    Value: !Sub
+      - https://${ApiId}.execute-api.${AWS::Region}.amazonaws.com/default
+      - ApiId: !Ref MembershipApiGateway
