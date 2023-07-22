@@ -35,16 +35,29 @@ def getPaidMembership(context, queryParams) -> dict:
     paid = loop.run_until_complete(gapi.isPaidMember(netid))
     return {
         'statusCode': 200,
+        'headers': {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Credentials": True
+        },
         'body': json.dumps({
             "netId": netid,
             "isPaidMember": paid
         })
     }
-
+def getUI(context, queryParam) -> dict:
+    with open("index.html", "r") as file:
+        return {
+            "statusCode": 200,
+            "headers": {
+                'Content-Type': 'text/html'
+            },
+            'body': file.read()
+        }
 find_handler = {
     "GET": {
         "/api/v1/healthz": healthzHandler,
         "/api/v1/checkMembership": getPaidMembership,
+        "/": getUI
     }
 }
 
