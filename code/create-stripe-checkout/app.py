@@ -1,7 +1,11 @@
 import json
 import requests
-import os
+import os, boto3
+import traceback
+client = boto3.client('secretsmanager', region_name=os.environ.get("AWS_REGION", "us-east-1"))
 
+
+STRIPE_SECRET_ID='infra-membership-api-stripe-secret'
 
 def create_checkout_session(netid):
 
@@ -10,9 +14,12 @@ def create_checkout_session(netid):
     price = "price_1MUGIRDiGOXU9RuSChPYK6wZ"
     
     payload='success_url=https%3A%2F%2Facm.illinois.edu%2F%23%2Fpaid&line_items%5B0%5D%5Bprice%5D={}&line_items%5B0%5D%5Bquantity%5D=1&mode=payment&cancel_url=https%3A%2F%2Facm.illinois.edu%2F%23%2Fmembership&customer_email={}%40illinois.edu'.format(price, netid)
+    keys = json.loads(client.get_secret_value(SecretId=STRIPE_SECRET_ID)['SecretString'])
+    stripe_key = keys['STRIPE_KEY_CHECKOUT']
+
     headers = {
       'Content-Type': 'application/x-www-form-urlencoded',
-      'Authorization': 'Bearer {}'.format(os.environ['STRIPE_KEY'])
+      'Authorization': 'Bearer {}'.format(stripe_key)
     }
     
     response = requests.request("POST", url, headers=headers, data=payload)
@@ -32,7 +39,8 @@ def lambda_handler(event, context):
         }
     try:
         link = create_checkout_session(netid)
-    except:
+    except Exception:
+        print(traceback.format_exc())
         return {
             'statusCode': 500, 'body': "Error."
         }

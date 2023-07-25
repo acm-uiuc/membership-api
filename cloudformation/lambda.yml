@@ -12,6 +12,11 @@ Parameters:
     Type: String
     AllowedPattern: ^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$
     Default: infra-membership-api-stripe-checkout-lambda
+
+  EnrollLambdaFunctionName:
+    Type: String
+    AllowedPattern: ^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$
+    Default: infra-membership-api-aad-enroll-lambda
   
   MembershipApiGWName:
     Type: String
@@ -22,6 +27,11 @@ Parameters:
     Type: String
     AllowedPattern: ^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$
     Default: infra-membership-api-aad-secret
+
+  StripeSecretName:
+    Type: String
+    AllowedPattern: ^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$
+    Default: infra-membership-api-stripe-secret
 
 Resources:
   # API Lambda
@@ -116,11 +126,75 @@ Resources:
                 Resource:
                   - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${StripeLambdaFunctionName}:*
           PolicyName: lambda
+        - PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                  - secretsmanager:GetSecretValue
+                Effect: Allow
+                Resource:
+                  - !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${StripeSecretName}*
+          PolicyName: lambda-secret
 
   MembershipApiStripeLambdaLogGroup:
     Type: AWS::Logs::LogGroup
     Properties:
       LogGroupName: !Sub /aws/lambda/${StripeLambdaFunctionName}
+      RetentionInDays: 7
+
+# AAD Provisioning
+  MembershipApiEnrollLambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../code/aad-enroll
+      AutoPublishAlias: live
+      Runtime: python3.10
+      Description: Membership API - Enroll New Paid Members Lambda
+      FunctionName: !Ref EnrollLambdaFunctionName
+      Handler: app.lambda_handler
+      MemorySize: 1024
+      Role: !GetAtt MembershipApiEnrollLambdaIAMRole.Arn
+      Timeout: 60
+
+  MembershipApiEnrollLambdaIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      Policies:
+        - PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource:
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${EnrollLambdaFunctionName}:*
+          PolicyName: lambda
+        - PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                  - secretsmanager:GetSecretValue
+                Effect: Allow
+                Resource:
+                  - !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${StripeSecretName}*
+                  - !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${AADSecretName}*
+          PolicyName: lambda-secret
+
+  MembershipApiEnrollLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${EnrollLambdaFunctionName}
       RetentionInDays: 7
 
 # API Gateway
@@ -184,6 +258,26 @@ Resources:
           - !Ref MembershipApiGateway
           - "/*/*/*"
           
+  APIEnrollLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Fn::GetAtt:
+        - MembershipApiEnrollLambdaFunction
+        - Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+        - ''
+        - - 'arn:aws:execute-api:'
+          - !Ref AWS::Region
+          - ":"
+          - !Ref AWS::AccountId
+          - ":"
+          - !Ref MembershipApiGateway
+          - "/*/*/*"
+
 Outputs:
   ApiUrl:
     Value: !Sub
