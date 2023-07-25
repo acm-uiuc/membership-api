@@ -7,6 +7,12 @@ client = boto3.client('secretsmanager', region_name=os.environ.get("AWS_REGION",
 
 STRIPE_SECRET_ID='infra-membership-api-stripe-secret'
 
+def check_paid_member(netid: str) -> bool:
+    url= f'https://membership.acm.illinois.edu/api/v1/checkMembership?netId={netid}'
+    response = requests.request("GET", url)
+    resp = response.json()
+    return resp['isPaidMember']
+
 def create_checkout_session(netid):
 
     url = "https://api.stripe.com/v1/checkout/sessions"
@@ -37,6 +43,13 @@ def lambda_handler(event, context):
             'statusCode': 404,
             'headers': {'Access-Control-Allow-Origin': '*'},
             'body': "No NetID provided"
+        }
+
+    if check_paid_member(netid):
+        return {
+            'statusCode': 400,
+            'headers': {'Access-Control-Allow-Origin': '*'},
+            'body': 'The given NetID is already an ACM Paid Memeber.'
         }
     try:
         link = create_checkout_session(netid)
