@@ -84,7 +84,7 @@ Resources:
     Properties:
       CodeUri: ../code/create-stripe-checkout
       AutoPublishAlias: live
-      Runtime: python3.9
+      Runtime: python3.10
       Description: Membership API - Checkout Stripe Session Lambda
       FunctionName: !Ref StripeLambdaFunctionName
       Handler: app.lambda_handler
