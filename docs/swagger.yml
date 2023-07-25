@@ -87,7 +87,7 @@ paths:
 
   /api/v1/checkout/session:
     get:
-      summary: Get a Stripe checkout session for getting an ACM membership.
+      summary: Get a Stripe checkout session for purchasing an ACM membership.
       operationId: getMembershipCheckoutSession
       parameters:
         - in: query
