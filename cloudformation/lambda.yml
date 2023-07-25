@@ -7,6 +7,11 @@ Parameters:
     Type: String
     AllowedPattern: ^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$
     Default: infra-membership-api-lambda
+
+  StripeLambdaFunctionName:
+    Type: String
+    AllowedPattern: ^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$
+    Default: infra-membership-api-stripe-checkout-lambda
   
   MembershipApiGWName:
     Type: String
@@ -73,12 +78,57 @@ Resources:
       LogGroupName: !Sub /aws/lambda/${LambdaFunctionName}
       RetentionInDays: 7
 
+# Stripe Checkout
+  MembershipApiStripeLambdaFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: ../code/create-stripe-checkout
+      AutoPublishAlias: live
+      Runtime: python3.9
+      Description: Membership API - Checkout Stripe Session Lambda
+      FunctionName: !Ref StripeLambdaFunctionName
+      Handler: app.lambda_handler
+      MemorySize: 1024
+      Role: !GetAtt MembershipApiStripeLambdaIAMRole.Arn
+      Timeout: 60
+
+  MembershipApiStripeLambdaIAMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: 2012-10-17
+        Statement:
+          - Action:
+              - sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service:
+                - lambda.amazonaws.com
+      Policies:
+        - PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Effect: Allow
+                Resource:
+                  - !Sub arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${StripeLambdaFunctionName}:*
+          PolicyName: lambda
+
+  MembershipApiStripeLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub /aws/lambda/${StripeLambdaFunctionName}
+      RetentionInDays: 7
 
 # API Gateway
   MembershipApiGateway:
     Type: AWS::Serverless::Api
     DependsOn: 
       - MembershipApiLambdaFunction
+      - MembershipApiStripeLambdaFunction
     Properties:
       Name: !Ref MembershipApiGWName
       Description: Membership API Gateway
@@ -100,6 +150,26 @@ Resources:
       FunctionName:
         Fn::GetAtt:
         - MembershipApiLambdaFunction
+        - Arn
+      Action: lambda:InvokeFunction
+      Principal: apigateway.amazonaws.com
+      SourceArn:
+        Fn::Join:
+        - ''
+        - - 'arn:aws:execute-api:'
+          - !Ref AWS::Region
+          - ":"
+          - !Ref AWS::AccountId
+          - ":"
+          - !Ref MembershipApiGateway
+          - "/*/*/*"
+
+  APIStripeLambdaPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      FunctionName:
+        Fn::GetAtt:
+        - MembershipApiStripeLambdaFunction
         - Arn
       Action: lambda:InvokeFunction
       Principal: apigateway.amazonaws.com
