@@ -35,6 +35,7 @@ def lambda_handler(event, context):
     except:
         return {
             'statusCode': 404,
+            'headers': {'Access-Control-Allow-Origin': '*'},
             'body': "No NetID provided"
         }
     try:
@@ -42,6 +43,6 @@ def lambda_handler(event, context):
     except Exception:
         print(traceback.format_exc())
         return {
-            'statusCode': 500, 'body': "Error."
+            'statusCode': 500, 'headers': {'Access-Control-Allow-Origin': '*'}, 'body': "Error."
         }
-    return {'statusCode': 200, 'body': link}
+    return {'statusCode': 200, 'headers': {'Access-Control-Allow-Origin': '*'}, 'body': link}
