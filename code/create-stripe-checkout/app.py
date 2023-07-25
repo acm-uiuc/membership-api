@@ -47,7 +47,7 @@ def lambda_handler(event, context):
 
     if check_paid_member(netid):
         return {
-            'statusCode': 400,
+            'statusCode': 409,
             'headers': {'Access-Control-Allow-Origin': '*'},
             'body': 'The given NetID is already an ACM Paid Memeber.'
         }
