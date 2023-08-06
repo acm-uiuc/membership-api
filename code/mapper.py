@@ -69,7 +69,7 @@ find_handler = {
         "/api/v1/healthz": healthzHandler,
         "/api/v1/checkMembership": getPaidMembership,
         "/": getUI,
-        "banner.png": getBanner
+        "/banner.png": getBanner
     }
 }
 
