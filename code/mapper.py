@@ -53,7 +53,7 @@ def getUI(context, queryParam) -> dict:
             },
             'body': file.read()
         }
-    }
+
 def getBanner(context, queryParam) -> dict:
     with open("banner.png", "r") as file:
         return {
@@ -63,6 +63,7 @@ def getBanner(context, queryParam) -> dict:
             },
             'body': file.read()
         }
+
 find_handler = {
     "GET": {
         "/api/v1/healthz": healthzHandler,
