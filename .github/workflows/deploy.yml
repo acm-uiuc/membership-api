@@ -8,6 +8,7 @@ on:
 jobs:
   lint:
     uses: acm-uiuc/reusable-actions/.github/workflows/cfn-lint.yml@main
+
   deploy:
     runs-on: ubuntu-latest
     steps:
