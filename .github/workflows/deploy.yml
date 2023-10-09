@@ -9,6 +9,7 @@ jobs:
   lint:
     uses: acm-uiuc/reusable-actions/.github/workflows/cfn-lint.yml@main
   deploy:
+    environment: "AWS PROD"
     runs-on: ubuntu-latest
     needs:
       - lint
