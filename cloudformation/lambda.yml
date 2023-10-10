@@ -3,6 +3,14 @@ Description: Membership API
 Transform: AWS::Serverless-2016-10-31
 
 Parameters:
+  ApiDomainName:
+    Type: String
+    Default: membership.acm.illinois.edu
+
+  ApiCertificateArn:
+    Type: String
+    Default: arn:aws:acm:us-east-1:298118738376:certificate/93955040-5806-4188-b01f-9c16eddb78e4
+
   LambdaFunctionName:
     Type: String
     AllowedPattern: ^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$
@@ -213,9 +221,8 @@ Resources:
           Parameters:
             Location: ../docs/swagger.yml
       Domain: 
-        DomainName: membership.acm.illinois.edu
-        CertificateArn: >-
-          arn:aws:acm:us-east-1:298118738376:certificate/93955040-5806-4188-b01f-9c16eddb78e4
+        DomainName: !Ref ApiDomainName
+        CertificateArn: !Ref ApiCertificateArn
       StageName: default
 
   APILambdaPermission:
