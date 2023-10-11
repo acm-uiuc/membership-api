@@ -293,6 +293,25 @@ Resources:
         CertificateArn: !Ref ApiCertificateArn
       StageName: default
 
+  MembershipApiGatewayLatencyAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Condition: IsProd
+    Properties:
+      AlarmName: !Sub '${MembershipApiGWName}-alarm'
+      AlarmDescription: !Sub 'Alarm if ${MembershipApiGWName} API gateway errors are detected.'
+      Namespace: 'AWS/ApiGateway'
+      MetricName: 'Latency'
+      Statistic: 'Average'
+      Period: '60'
+      EvaluationPeriods: '1'
+      ComparisonOperator: 'GreaterThanThreshold'
+      Threshold: '2000'
+      AlarmActions:
+        - !Ref AlertSNSArn
+      Dimensions:
+        - Name: 'ApiName'
+          Value: !Ref MembershipApiGWName
+
   APILambdaPermission:
     Type: AWS::Lambda::Permission
     Properties:
