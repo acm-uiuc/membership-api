@@ -3,6 +3,15 @@ Description: Membership API
 Transform: AWS::Serverless-2016-10-31
 
 Parameters:
+  Env:
+    Description: Environment
+    Type: String
+    AllowedValues: [ 'dev', 'prod' ]
+  AlertSNSArn:
+    Description: SNS Queue to send alarm alerts to
+    Type: String
+    Default: arn:aws:sns:us-east-1:298118738376:infra-monitor-alerts
+
   LambdaFunctionName:
     Type: String
     AllowedPattern: ^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$
@@ -33,6 +42,9 @@ Parameters:
     AllowedPattern: ^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$
     Default: infra-membership-api-stripe-secret
 
+Conditions:
+  IsProd: !Equals [!Ref Env, 'prod']
+
 Resources:
   # API Lambda
   MembershipApiLambdaFunction:
@@ -47,6 +59,25 @@ Resources:
       MemorySize: 2048
       Role: !GetAtt MembershipApiLambdaIAMRole.Arn
       Timeout: 60
+
+  MembershipApiLambdaFunctionErrorAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Condition: IsProd
+    Properties:
+      AlarmName: !Sub '${MembershipApiLambdaFunction}-alarm'
+      AlarmDescription: !Sub 'Alarm if ${MembershipApiLambdaFunction} function errors are detected.'
+      Namespace: 'AWS/Lambda'
+      MetricName: 'Errors'
+      Statistic: 'Sum'
+      Period: '60'
+      EvaluationPeriods: '1'
+      ComparisonOperator: 'GreaterThanThreshold'
+      Threshold: '0'
+      AlarmActions:
+        - !Ref AlertSNSArn
+      Dimensions:
+        - Name: 'FunctionName'
+          Value: !Ref MembershipApiLambdaFunction
 
   MembershipApiLambdaIAMRole:
     Type: AWS::IAM::Role
@@ -102,6 +133,25 @@ Resources:
       Role: !GetAtt MembershipApiStripeLambdaIAMRole.Arn
       Timeout: 60
 
+  MembershipApiStripeLambdaFunctionErrorAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Condition: IsProd
+    Properties:
+      AlarmName: !Sub '${MembershipApiStripeLambdaFunction}-alarm'
+      AlarmDescription: !Sub 'Alarm if ${MembershipApiStripeLambdaFunction} function errors are detected.'
+      Namespace: 'AWS/Lambda'
+      MetricName: 'Errors'
+      Statistic: 'Sum'
+      Period: '60'
+      EvaluationPeriods: '1'
+      ComparisonOperator: 'GreaterThanThreshold'
+      Threshold: '0'
+      AlarmActions:
+        - !Ref AlertSNSArn
+      Dimensions:
+        - Name: 'FunctionName'
+          Value: !Ref MembershipApiStripeLambdaFunction
+
   MembershipApiStripeLambdaIAMRole:
     Type: AWS::IAM::Role
     Properties:
@@ -155,6 +205,25 @@ Resources:
       MemorySize: 1024
       Role: !GetAtt MembershipApiEnrollLambdaIAMRole.Arn
       Timeout: 60
+
+  MembershipApiEnrollLambdaFunctionErrorAlarm:
+    Type: 'AWS::CloudWatch::Alarm'
+    Condition: IsProd
+    Properties:
+      AlarmName: !Sub '${MembershipApiEnrollLambdaFunction}-alarm'
+      AlarmDescription: !Sub 'Alarm if ${MembershipApiEnrollLambdaFunction} function errors are detected.'
+      Namespace: 'AWS/Lambda'
+      MetricName: 'Errors'
+      Statistic: 'Sum'
+      Period: '60'
+      EvaluationPeriods: '1'
+      ComparisonOperator: 'GreaterThanThreshold'
+      Threshold: '0'
+      AlarmActions:
+        - !Ref AlertSNSArn
+      Dimensions:
+        - Name: 'FunctionName'
+          Value: !Ref MembershipApiEnrollLambdaFunction
 
   MembershipApiEnrollLambdaIAMRole:
     Type: AWS::IAM::Role

@@ -61,7 +61,10 @@ def add_to_group(token, email, i):
         # the user may exist the microservices may just not have synced yet
     elif (x.status_code >= 400):
         print("Could not find the user to add, we're going to error so Stripe tries again.")
-        raise Exception("We tried to add the user to the paid group but couldn't find them, likely microservices issue")
+        return {
+            'statusCode': '500',
+            'body': "We tried to add the user to the paid group but couldn't find them, likely microservices issue. Failing so Stripe retries."
+        }
     else:
         print("Finally succeeded adding: ", email)
     return (x.status_code == 204 or x.status_code == 200)
@@ -115,7 +118,10 @@ def lambda_handler(event, context):
         try:
             add_to_group(token, email, 0)
         except:
-            raise Exception("Error occured adding existing member to paid members group. Failing so AWS retries")
+            return {
+                'statusCode': '500',
+                'body': "Couldn't add to group, failing so Stripe retries."
+            }
         print("Done adding existing user: ", email)
         return {
             'statusCode': 201,
@@ -134,7 +140,10 @@ def lambda_handler(event, context):
         try:
             done = add_to_group(token, email, 0)
         except:
-            raise Exception("Error occured adding existing member to paid members group. Failing so AWS retries")
+            return {
+                'statusCode': '500',
+                'body': "Couldn't add to group, failing so Stripe retries."
+            }
         print("Done: ", done)
         return {
             'statusCode': 200,
