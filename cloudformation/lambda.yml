@@ -297,8 +297,8 @@ Resources:
     Type: 'AWS::CloudWatch::Alarm'
     Condition: IsProd
     Properties:
-      AlarmName: !Sub '${MembershipApiGWName}-alarm'
-      AlarmDescription: !Sub 'Alarm if ${MembershipApiGWName} API gateway errors are detected.'
+      AlarmName: !Sub '${MembershipApiGWName}-latency-alarm'
+      AlarmDescription: !Sub 'Alarm if ${MembershipApiGWName} API gateway latency > 2s.'
       Namespace: 'AWS/ApiGateway'
       MetricName: 'Latency'
       Statistic: 'Average'
