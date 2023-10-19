@@ -3,7 +3,7 @@ import boto3, os, asyncio, time
 from graph import GraphAPI
 
 client = boto3.client('secretsmanager', region_name=os.environ.get("AWS_REGION", "us-east-1"))
-dynamo = boto3.client('dynamodb', region_name=os.environ.get("AWS_REGION", "us-east-1"))
+dynamo = boto3.resource('dynamodb', region_name=os.environ.get("AWS_REGION", "us-east-1"))
 
 TABLE_NAME='infra-membership-api-cache'
 AAD_SECRET_ID='infra-membership-api-aad-secret'
