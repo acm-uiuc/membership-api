@@ -41,15 +41,18 @@ def getPaidMembership(context, queryParams) -> dict:
                 'key': 'access_token'
             }
         )
-        aad_secret = response['Item']
+        aad_secret = response['Item']['value']
     except:
         # We don't have a cached token, got TTL'ed out.
         aad_secret = json.loads(client.get_secret_value(SecretId=AAD_SECRET_ID)['SecretString'])
         table.put_item(
             Item={
                 'key': {
-                    'M': aad_secret 
+                    'S': 'access_token' 
                 },
+                'value': {
+                    'M': aad_secret
+                }
                 'TimeToLive': {
                     'N': int(time.time()) + TOKEN_VALIDITY_SECONDS
                 }
