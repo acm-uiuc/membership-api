@@ -47,15 +47,9 @@ def getPaidMembership(context, queryParams) -> dict:
         aad_secret = json.loads(client.get_secret_value(SecretId=AAD_SECRET_ID)['SecretString'])
         table.put_item(
             Item={
-                'key': {
-                    'S': 'access_token' 
-                },
-                'value': {
-                    'M': aad_secret
-                },
-                'TimeToLive': {
-                    'N': int(time.time()) + TOKEN_VALIDITY_SECONDS
-                }
+                'key': 'access_token',
+                'value': aad_secret,
+                'TimeToLive':  int(time.time()) + TOKEN_VALIDITY_SECONDS
             }
         )
     gapi = GraphAPI(aad_secret['CLIENT_ID'], aad_secret['CLIENT_SECRET'])
