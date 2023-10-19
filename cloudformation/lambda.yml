@@ -29,6 +29,11 @@ Parameters:
     AllowedPattern: ^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$
     Default: infra-membership-api-stripe-checkout-lambda
 
+  MembershipApiCacheTableName:
+    Type: String
+    AllowedPattern: ^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$
+    Default: infra-membership-api-cache
+
   EnrollLambdaFunctionName:
     Type: String
     AllowedPattern: ^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$
@@ -54,6 +59,31 @@ Conditions:
 
 Resources:
   # API Lambda
+
+  MembershipApiCacheTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Ref MembershipApiCacheTableName
+      TimeToLiveSpecification:
+        AttributeName: TimeToLive
+        Enabled: true
+      AttributeDefinitions:
+        - 
+          AttributeName: key
+          AttributeType: S
+      KeySchema:
+        - 
+          AttributeName: key
+          KeyType: HASH
+      ProvisionedThroughput:
+        ReadCapacityUnits: 2
+        WriteCapacityUnits: 2
+      Tags:
+        - Key: "project"
+          Value: "infra-admin-api"
+        - Key: "techlead"
+          Value: "pc42@illinois.edu"
+
   MembershipApiLambdaFunction:
     Type: AWS::Serverless::Function
     Properties:
@@ -119,6 +149,15 @@ Resources:
                 Resource:
                   - !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${AADSecretName}*
           PolicyName: lambda-secret
+        - PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                  - dynamodb:*
+                Effect: Allow
+                Resource:
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${MembershipApiCacheTableName}
+          PolicyName: lambda-dn
 
   MembershipApiLambdaLogGroup:
     Type: AWS::Logs::LogGroup
@@ -266,6 +305,15 @@ Resources:
                   - !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${StripeSecretName}*
                   - !Sub arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:${AADSecretName}*
           PolicyName: lambda-secret
+        - PolicyDocument:
+            Version: 2012-10-17
+            Statement:
+              - Action:
+                  - dynamodb:*
+                Effect: Allow
+                Resource:
+                  - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${MembershipApiCacheTableName}
+          PolicyName: lambda-dn
 
   MembershipApiEnrollLambdaLogGroup:
     Type: AWS::Logs::LogGroup

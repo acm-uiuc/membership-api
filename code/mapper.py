@@ -1,10 +1,15 @@
 import json
-import boto3, os, asyncio
+import boto3, os, asyncio, time
 from graph import GraphAPI
 
 client = boto3.client('secretsmanager', region_name=os.environ.get("AWS_REGION", "us-east-1"))
-AAD_SECRET_ID='infra-membership-api-aad-secret'
+dynamo = boto3.client('dynamodb', region_name=os.environ.get("AWS_REGION", "us-east-1"))
 
+TABLE_NAME='infra-membership-api-cache'
+AAD_SECRET_ID='infra-membership-api-aad-secret'
+TOKEN_VALIDITY_SECONDS = 3590 # it's really 3600 but we save them slightly shorter
+
+table = dynamo.Table(TABLE_NAME)
 
 def healthzHandler(context, queryParams):
     return {
@@ -29,7 +34,27 @@ def badRequest(message):
 
 def getPaidMembership(context, queryParams) -> dict:
     netid = queryParams['netId']
-    aad_secret = json.loads(client.get_secret_value(SecretId=AAD_SECRET_ID)['SecretString'])
+    aad_secret = {}
+    try:
+        response = table.get_item(
+            Key={
+                'key': 'access_token'
+            }
+        )
+        aad_secret = response['Item']
+    except:
+        # We don't have a cached token, got TTL'ed out.
+        aad_secret = json.loads(client.get_secret_value(SecretId=AAD_SECRET_ID)['SecretString'])
+        table.put_item(
+            Item={
+                'key': {
+                    'M': aad_secret 
+                },
+                'TimeToLive': {
+                    'N': int(time.time()) + TOKEN_VALIDITY_SECONDS
+                }
+            }
+        )
     gapi = GraphAPI(aad_secret['CLIENT_ID'], aad_secret['CLIENT_SECRET'])
     loop = asyncio.get_event_loop()
     paid = loop.run_until_complete(gapi.isPaidMember(netid))
