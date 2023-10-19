@@ -34,24 +34,7 @@ def badRequest(message):
 
 def getPaidMembership(context, queryParams) -> dict:
     netid = queryParams['netId']
-    aad_secret = {}
-    try:
-        response = table.get_item(
-            Key={
-                'key': 'access_token'
-            }
-        )
-        aad_secret = response['Item']['value']
-    except:
-        # We don't have a cached token, got TTL'ed out.
-        aad_secret = json.loads(client.get_secret_value(SecretId=AAD_SECRET_ID)['SecretString'])
-        table.put_item(
-            Item={
-                'key': 'access_token',
-                'value': aad_secret,
-                'TimeToLive':  int(time.time()) + TOKEN_VALIDITY_SECONDS
-            }
-        )
+    aad_secret = json.loads(client.get_secret_value(SecretId=AAD_SECRET_ID)['SecretString'])
     gapi = GraphAPI(aad_secret['CLIENT_ID'], aad_secret['CLIENT_SECRET'])
     loop = asyncio.get_event_loop()
     paid = loop.run_until_complete(gapi.isPaidMember(netid))
