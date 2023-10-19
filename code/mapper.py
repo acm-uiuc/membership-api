@@ -52,7 +52,7 @@ def getPaidMembership(context, queryParams) -> dict:
                 },
                 'value': {
                     'M': aad_secret
-                }
+                },
                 'TimeToLive': {
                     'N': int(time.time()) + TOKEN_VALIDITY_SECONDS
                 }
