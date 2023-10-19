@@ -17,22 +17,22 @@ class GraphAPI:
     clientId: str
     clientSecret: str
     token: Token
-    activationTime: float
 
     def __init__(self, client, secret):
         self.clientId = client
         self.clientSecret = secret
-        self.token = Token(expires_in=0, access_token='')
-        self.activationTime = time.time()
-    async def createNewToken(self):
+        self.token = Token(expires_in=-1, access_token='')
+
+    async def createNewToken(self, force_new=False):
         try:
+            if force_new:
+                raise Exception("Forcing new access token.")
             response = table.get_item(
                 Key={
                     'key': 'access_token'
                 }
             )
             parsed = response['Item']['value']
-            self.activationTime = time.time()
             self.token.access_token = parsed['access_token']
             self.token.expires_in = response['Item']['TimeToLive'] - int(time.time())
             print("Got AAD token from dynamo cache.")
@@ -46,7 +46,6 @@ class GraphAPI:
             async with aiohttp.ClientSession() as session:
                 async with session.post(TOKEN_URL, data=data) as resp:
                     parsed = await resp.json()
-                    self.activationTime = time.time()
                     self.token.access_token = parsed['access_token']
                     self.token.expires_in = parsed['expires_in']
             table.put_item(
@@ -60,9 +59,9 @@ class GraphAPI:
 
     async def isPaidMember(self, netID: str) -> bool:
         netID = netID.lower()
-        timeDiff = time.time() - self.activationTime
-        if self.token.expires_in <= 0 or self.token.access_token == '' or timeDiff > self.token.expires_in:
-            await self.createNewToken()
+        await self.createNewToken()
+        if self.token.expires_in <= 0:
+            await self.createNewToken(force_new=True)
         headers = {
             'Authorization': f"Bearer {self.token.access_token}",
             'Content-Type': 'application/json',
