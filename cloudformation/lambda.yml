@@ -346,12 +346,12 @@ Resources:
     Condition: IsProd
     Properties:
       AlarmName: !Sub '${MembershipApiGWName}-latency-alarm'
-      AlarmDescription: !Sub 'Alarm if ${MembershipApiGWName} API gateway latency > 2s.'
+      AlarmDescription: !Sub 'Alarm if ${MembershipApiGWName} API gateway latency > 2s for 3 min.'
       Namespace: 'AWS/ApiGateway'
       MetricName: 'Latency'
       Statistic: 'Average'
       Period: '60'
-      EvaluationPeriods: '1'
+      EvaluationPeriods: '3'
       ComparisonOperator: 'GreaterThanThreshold'
       Threshold: '2000'
       AlarmActions:
