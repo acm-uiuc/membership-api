@@ -100,7 +100,7 @@ def lambda_handler(event, context):
                 "statusCode": 200,
                 "body": "Not a subscription event."
             }
-        email = parsedBody['data']['object']['customer_details']['email']
+        email = parsedBody['data']['object']['customer_details']['email'].lower()
         print("Inviting: ", email)
     except:
         return {
