@@ -33,7 +33,7 @@ def badRequest(message):
     }
 
 def getPaidMembership(context, queryParams) -> dict:
-    netid = queryParams['netId']
+    netid = queryParams['netId'].lower()
     aad_secret = json.loads(client.get_secret_value(SecretId=AAD_SECRET_ID)['SecretString'])
     gapi = GraphAPI(aad_secret['CLIENT_ID'], aad_secret['CLIENT_SECRET'])
     loop = asyncio.get_event_loop()
