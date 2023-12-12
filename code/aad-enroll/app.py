@@ -10,6 +10,7 @@ client = boto3.client('secretsmanager', region_name=os.environ.get("AWS_REGION",
 
 STRIPE_SECRET_ID='infra-membership-api-stripe-secret'
 AAD_SECRET_ID ='infra-membership-api-aad-secret'
+MEMBERSHIP_PRICE_ID = 'price_1MUGIRDiGOXU9RuSChPYK6wZ'
 
 def get_secret_value(name: str, client) -> dict:
     return json.loads(client.get_secret_value(SecretId=name)['SecretString'])
@@ -91,6 +92,19 @@ def lambda_handler(event, context):
             'statusCode': 421,
             'body': "Invalid Payload."
         }
+    line_items = None
+    try:
+        line_items = stripe.checkout.Session.retrieve(
+            event['data']['object']['id'],
+            expand=['line_items'],
+        ).line_items
+    except Exception:
+        print(traceback.format_exc())
+        return {
+            'statusCode': 421,
+            'body': "Could not get line items."
+        }
+    print(line_items)
     try:
         parsedBody = json.loads(body)
         cancel_url = parsedBody['data']['object']['cancel_url']
