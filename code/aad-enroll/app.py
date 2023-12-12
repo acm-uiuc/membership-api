@@ -76,6 +76,7 @@ def lambda_handler(event, context):
     aws_aad_secret = get_secret_value(AAD_SECRET_ID, client)
 
     secret = aws_stripe_secret['AAD_ENROLL_ENDPOINT_SECRET']
+    stripe.api_key = aws_stripe_secret['STRIPE_KEY_CHECKOUT']
     try:
         if event["queryStringParameters"]["test"]:
             print("Using test key")
@@ -93,9 +94,17 @@ def lambda_handler(event, context):
             'body': "Invalid Payload."
         }
     line_items = None
+    parsedBody = None
+    try:
+        parsedBody = json.loads(body)
+    except:
+        return {
+            'statusCode': 421,
+            'body': "Invalid JSON Payload."
+        }  
     try:
         line_items = stripe.checkout.Session.retrieve(
-            event['data']['object']['id'],
+            parsedBody['data']['object']['id'],
             expand=['line_items'],
         ).line_items
     except Exception:
@@ -106,7 +115,6 @@ def lambda_handler(event, context):
         }
     print(line_items)
     try:
-        parsedBody = json.loads(body)
         cancel_url = parsedBody['data']['object']['cancel_url']
         success_url = parsedBody['data']['object']['success_url']
         if cancel_url != "https://acm.illinois.edu/#/membership" or success_url != "https://acm.illinois.edu/#/paid":
