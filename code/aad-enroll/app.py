@@ -10,7 +10,7 @@ client = boto3.client('secretsmanager', region_name=os.environ.get("AWS_REGION",
 
 STRIPE_SECRET_ID='infra-membership-api-stripe-secret'
 AAD_SECRET_ID ='infra-membership-api-aad-secret'
-MEMBERSHIP_PRICE_ID = 'price_1MUGIRDiGOXU9RuSChPYK6wZ'
+MEMBERSHIP_PRODUCT_ID = 'prod_NEjlU6abj4m6ua'
 
 def get_secret_value(name: str, client) -> dict:
     return json.loads(client.get_secret_value(SecretId=name)['SecretString'])
@@ -113,17 +113,20 @@ def lambda_handler(event, context):
             'statusCode': 421,
             'body': "Could not get line items."
         }
-    print(line_items)
+    isMembershipEvent = False
     try:
-        cancel_url = parsedBody['data']['object']['cancel_url']
-        success_url = parsedBody['data']['object']['success_url']
-        if cancel_url != "https://acm.illinois.edu/#/membership" or success_url != "https://acm.illinois.edu/#/paid":
+        for item in line_items['data']:
+            if item['price']['product'] == MEMBERSHIP_PRODUCT_ID:
+                isMembershipEvent = True
+        if isMembershipEvent:
+            print("Found Membership Event")
+            email = parsedBody['data']['object']['customer_details']['email'].lower()
+            print("Inviting: ", email)
+        else:
             return {
                 "statusCode": 200,
-                "body": "Not a subscription event."
+                "body": "Not a membership event."
             }
-        email = parsedBody['data']['object']['customer_details']['email'].lower()
-        print("Inviting: ", email)
     except:
         return {
             "statusCode": 404,
