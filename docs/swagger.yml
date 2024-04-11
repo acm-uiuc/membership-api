@@ -89,6 +89,42 @@ paths:
         uri: 
           Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${LambdaFunctionName}/invocations
 
+  /api/v1/checkExternalMembership:
+    get:
+      summary: Get external list membership status for a given Illinois NetID.
+      operationId: checkExternalMembership
+      parameters:
+        - in: query
+          name: netId
+          schema:
+            type: string
+          required: true
+          description: Illinois NetID to check.
+        - in: query
+          name: list
+          schema:
+            type: string
+          required: true
+          description: List to check against
+      responses:
+        200:
+          description: OK
+
+      x-amazon-apigateway-auth:
+        type: NONE
+
+      x-amazon-apigateway-integration:
+        responses:
+          default:
+            statusCode: 200
+        passthroughBehavior: when_no_match
+        httpMethod: POST
+        contentHandling: CONVERT_TO_TEXT
+        type: aws_proxy
+        uri: 
+          Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${LambdaFunctionName}/invocations
+
+  
   /api/v1/checkout/session:
     get:
       summary: Get a Stripe checkout session for purchasing an ACM membership.
