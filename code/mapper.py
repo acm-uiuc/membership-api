@@ -56,12 +56,13 @@ def getExternalMembership(context, queryParams) -> dict:
     check_list = queryParams['list'].lower()
     member = False
     try:
-        list_table.get_item(
+        response = list_table.get_item(
             Key={
-                'key': f"{netid}_{check_list}"
+                'netid_list': f"{netid}_{check_list}"
             } 
         )
-        member = True
+        if 'Item' in response:
+            member = True
     except KeyError:
         member = False
     return {
@@ -96,9 +97,9 @@ find_handler = {
 }
 
 def execute(method: str, path: str, queryParams: dict, context: dict) -> dict:
-    try:
-        func: function = find_handler[method][path]
-        return func(context, queryParams)
-    except KeyError as e:
+    if method not in find_handler or path not in find_handler[method]:
         print(f"ERROR: No handler found for method {method} and path {path}.")
         return notImplemented(context, queryParams)
+    func: function = find_handler[method][path]
+    return func(context, queryParams)
+
