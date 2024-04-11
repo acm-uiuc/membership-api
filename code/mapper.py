@@ -6,10 +6,12 @@ client = boto3.client('secretsmanager', region_name=os.environ.get("AWS_REGION",
 dynamo = boto3.resource('dynamodb', region_name=os.environ.get("AWS_REGION", "us-east-1"))
 
 TABLE_NAME='infra-membership-api-cache'
+EXTERNAL_LIST_TABLE_NAME = 'infra-membership-api-external-lists'
 AAD_SECRET_ID='infra-membership-api-aad-secret'
 TOKEN_VALIDITY_SECONDS = 3590 # it's really 3600 but we save them slightly shorter
 
 table = dynamo.Table(TABLE_NAME)
+list_table = dynamo.Table(EXTERNAL_LIST_TABLE_NAME)
 
 def healthzHandler(context, queryParams):
     return {
@@ -49,6 +51,31 @@ def getPaidMembership(context, queryParams) -> dict:
             "isPaidMember": paid
         })
     }
+def getExternalMembership(context, queryParams) -> dict:
+    netid = queryParams['netId'].lower()
+    check_list = queryParams['list'].lower()
+    member = False
+    try:
+        list_table.get_item(
+            Key={
+                'key': f"{netid}_{check_list}"
+            } 
+        )
+        member = True
+    except KeyError:
+        member = False
+    return {
+        'statusCode': 200,
+        'headers': {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Credentials": True
+        },
+        'body': json.dumps({
+            "netId": netid,
+            "list": check_list,
+            "isPaidMember": member
+        })
+    }
 def getUI(context, queryParam) -> dict:
     with open("index.html", "r") as file:
         return {
@@ -63,6 +90,7 @@ find_handler = {
     "GET": {
         "/api/v1/healthz": healthzHandler,
         "/api/v1/checkMembership": getPaidMembership,
+        "/api/v1/checkExternalMembership": getExternalMembership,
         "/": getUI,
     }
 }

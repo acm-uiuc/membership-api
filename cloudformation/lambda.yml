@@ -58,8 +58,19 @@ Conditions:
   IsProd: !Equals [!Ref Env, 'prod']
 
 Resources:
-  # API Lambda
-
+  MembershipApiExternalQueryListsTable:
+    Type: 'AWS::DynamoDB::Table'
+    DeletionPolicy: "Retain"  
+    Properties:
+      BillingMode: 'PAY_PER_REQUEST'
+      TableName: infra-membership-api-external-lists
+      DeletionProtectionEnabled: true
+      AttributeDefinitions:
+        - AttributeName: netid_list
+          AttributeType: S
+      KeySchema:
+        - AttributeName: netid_list
+          KeyType: HASH
   MembershipApiCacheTable:
     Type: AWS::DynamoDB::Table
     Properties:
@@ -157,6 +168,7 @@ Resources:
                 Effect: Allow
                 Resource:
                   - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${MembershipApiCacheTableName}
+                  - !GetAtt MembershipApiExternalQueryListsTable.Arn
           PolicyName: lambda-dn
 
   MembershipApiLambdaLogGroup:
