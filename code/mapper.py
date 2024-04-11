@@ -61,6 +61,7 @@ def getExternalMembership(context, queryParams) -> dict:
                 'netid_list': f"{netid}_{check_list}"
             } 
         )
+        print(response)
         if 'Item' in response:
             member = True
     except KeyError:
