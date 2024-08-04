@@ -45,15 +45,6 @@ cors_config = CORSConfig(
 )
 app = APIGatewayRestResolver(cors=cors_config)
 
-@app.get("/")
-def get_ui():
-    with open("index.html", "r") as file:
-        return Response(
-            status_code=200,
-            content_type=content_types.TEXT_HTML,
-            body=file.read()
-        )
-
 @app.get("/api/v1/healthz")
 def healthz():
     return Response(
