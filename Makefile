@@ -9,7 +9,7 @@ src_directory_root = src/
 integration_test_directory_root = tests/live_integration
 
 # CHANGE ME (as needed)
-application_key=infra-membership-api-v1
+application_key=infra-membership-api
 application_name="MembershipApi"
 techlead="dsingh14@illinois.edu"
 region="us-east-1"
