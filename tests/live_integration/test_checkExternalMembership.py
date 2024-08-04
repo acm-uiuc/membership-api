@@ -12,3 +12,8 @@ def test_invalid_parameters(api_client):
     response = api_client.get("/api/v1/checkExternalMembership")
     assert response.status_code == 400
     assert response.json() == {"message": "No NetID provided."}
+
+def test_invalid_parameters_2(api_client):
+    response = api_client.get("/api/v1/checkExternalMembership?netId=testinguser")
+    assert response.status_code == 400
+    assert response.json() == {"message": "No check list provided."}
