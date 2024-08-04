@@ -1,7 +1,9 @@
+from tkinter.tix import MAX
 import requests
 import json
 import time
 import os
+MAX_ATTEMPTS = 20
 def get_entra_access_token(aws_secret):
     print("Getting access token")
     url = "https://login.microsoftonline.com/c8d9148f-9a59-4db3-827d-42ea0c2b6e2e/oauth2/v2.0/token"
@@ -51,10 +53,15 @@ def add_to_group(token, email, i=0):
     reqjson = json.dumps({"@odata.id": "https://graph.microsoft.com/v1.0/users/{}".format(upn)})
     x = requests.post(reqpage, headers = headers, data=reqjson)
     print(x.text)
-    if (x.json()['error']['message'] == "One or more added object references already exist for the following modified properties: 'members'."):
+    try:
+        json_resp = x.json()
+    except Exception:
+        print(f"Failed to parse JSON response, trying one more time: {x.text}", flush=True)
+        return add_to_group(token, email, MAX_ATTEMPTS)
+    if (json_resp['error']['message'] == "One or more added object references already exist for the following modified properties: 'members'."):
         print("Already in tenant: ", email)
         return True
-    if (x.status_code >= 400 and i < 20):
+    if (x.status_code >= 400 and i < MAX_ATTEMPTS):
         print("User not found, retrying, try: ", i)
         time.sleep(5)
         return add_to_group(token, email, i+1)
