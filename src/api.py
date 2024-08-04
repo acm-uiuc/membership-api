@@ -124,12 +124,6 @@ def get_checkout_session():
 def provision_member():
     secret = global_credentials['AAD_ENROLL_ENDPOINT_SECRET']
     stripe.api_key = global_credentials['STRIPE_KEY_CHECKOUT']
-    try:
-        if app.current_event.get_query_string_value(name="test"):
-            logger.info("Using test key")
-            secret = global_credentials['AAD_ENROLL_TEST_ENDPOINT_SECRET']
-    except Exception:
-        secret = global_credentials['AAD_ENROLL_ENDPOINT_SECRET']
     body = app.current_event['body']
     try:
         stripe.Webhook.construct_event(body, app.current_event['headers']['Stripe-Signature'], secret)
@@ -165,7 +159,7 @@ def provision_member():
         if isMembershipEvent:
             logger.info("Found Membership Event")
             email = parsed_body['data']['object']['customer_details']['email'].lower()
-            logger.info("Found subscriber", email)
+            logger.info("Found subscriber: " + email)
         else:
             return Response(
                 status_code=200,
@@ -182,10 +176,10 @@ def provision_member():
     entra_token = get_entra_access_token(global_credentials)['access_token']
     response_object = {}
     if get_user_exists(entra_token, email):
-        logger.info("Email already exists, not inviting: ", email)
+        logger.info("Email already exists, not inviting: " + email)
         response_object = {"message": f"Added (without inviting) {email} to paid members group"}
     else:
-        logger.info("Inviting", email, "to tenant")
+        logger.info("Inviting " + email + " to tenant")
         try:
             add_to_tenant(entra_token, email)
         except Exception:
@@ -196,7 +190,7 @@ def provision_member():
                 body={"message": "Could not invite to tenant, erroring so Stripe retries the event."}
             )
     try:
-        logger.info("Adding to Paid Members Group: ", email)
+        logger.info("Adding to Paid Members Group: " + email)
         add_to_group(entra_token, email)
         response_object = {"message": f"Added and invited {email} to paid members group"}
     except Exception:
