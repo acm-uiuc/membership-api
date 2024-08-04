@@ -53,11 +53,17 @@ def add_to_group(token, email, i=0):
     x = requests.post(reqpage, headers = headers, data=reqjson)
     try:
         json_resp = x.json()
-    except Exception:
-        print(f"Failed to parse JSON response, trying one more time: {x.text}", flush=True)
-        return add_to_group(token, email, MAX_ATTEMPTS)
+    except Exception as e:
+        # JSON error usually means that its done, avoid looping on MAX_ATTEMPTS
+        if i != MAX_ATTEMPTS:
+            return add_to_group(token, email, MAX_ATTEMPTS)
+        else:
+            raise e
     if (json_resp['error']['message'] == "One or more added object references already exist for the following modified properties: 'members'."):
-        print("Already in tenant: ", email)
+        if i == 0:
+            print("Already in Paid Members group: ", email)
+        else:
+            print("Added to Paid Members group: ", email)
         return True
     if (x.status_code >= 400 and i < MAX_ATTEMPTS):
         print("User not found, retrying, try: ", i)
