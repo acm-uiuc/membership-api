@@ -61,6 +61,14 @@ def healthz():
 @app.get("/api/v1/checkMembership")
 def check_membership():
     netid = (app.current_event.get_query_string_value(name="netId", default_value="") or "").lower()
+    if netid == "":
+        return Response(
+            status_code=400,
+            content_type=content_types.APPLICATION_JSON,
+            body={
+                "message": "No NetID provided."
+            },
+        )
     gapi = GraphAPI(global_credentials['AAD_CLIENT_ID'], global_credentials['AAD_CLIENT_SECRET'])
     return Response(
         status_code=200,
@@ -75,6 +83,22 @@ def check_membership():
 def check_external_membership():
     netid = (app.current_event.get_query_string_value(name="netId", default_value="") or "").lower()
     check_list = (app.current_event.get_query_string_value(name="list", default_value="") or "").lower()
+    if netid == "":
+        return Response(
+            status_code=400,
+            content_type=content_types.APPLICATION_JSON,
+            body={
+                "message": "No NetID provided."
+            },
+        )
+    if check_list == "":
+        return Response(
+            status_code=400,
+            content_type=content_types.APPLICATION_JSON,
+            body={
+                "message": "No check list provided."
+            },
+        )
     member = False
     try:
         response = list_table.get_item(
