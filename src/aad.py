@@ -2,6 +2,8 @@ import requests
 import json
 import time
 import os
+MAX_ATTEMPTS = 20
+SLEEP_TIME = 2.5
 def get_entra_access_token(aws_secret):
     print("Getting access token")
     url = "https://login.microsoftonline.com/c8d9148f-9a59-4db3-827d-42ea0c2b6e2e/oauth2/v2.0/token"
@@ -50,21 +52,25 @@ def add_to_group(token, email, i=0):
     upn = "{}_illinois.edu%23EXT%23@acmillinois.onmicrosoft.com".format(netid)
     reqjson = json.dumps({"@odata.id": "https://graph.microsoft.com/v1.0/users/{}".format(upn)})
     x = requests.post(reqpage, headers = headers, data=reqjson)
-    print(x.text)
-    if (x.json()['error']['message'] == "One or more added object references already exist for the following modified properties: 'members'."):
-        print("Already in tenant: ", email)
+    try:
+        json_resp = x.json()
+    except Exception as e:
+        # JSON error usually means that its done, avoid looping on MAX_ATTEMPTS
+        if i != MAX_ATTEMPTS:
+            return add_to_group(token, email, MAX_ATTEMPTS)
+        else:
+            raise e
+    if (json_resp['error']['message'] == "One or more added object references already exist for the following modified properties: 'members'."):
+        if i == 0:
+            print("Already in Paid Members group: ", email)
+        else:
+            print("Added to Paid Members group: ", email)
         return True
-    if (x.status_code >= 400 and i < 20):
-        print("User not found, retrying, try: ", i)
-        time.sleep(5)
+    if (x.status_code >= 400 and i < MAX_ATTEMPTS):
+        print(f"User not found, retrying in {SLEEP_TIME} seconds, try: ", i)
+        time.sleep(SLEEP_TIME)
         return add_to_group(token, email, i+1)
         # the user may exist the microservices may just not have synced yet
     elif (x.status_code >= 400):
-        print("Could not find the user to add, we're going to error so Stripe tries again.")
-        return {
-            'statusCode': '500',
-            'body': "We tried to add the user to the paid group but couldn't find them, likely microservices issue. Failing so Stripe retries."
-        }
-    else:
-        print("Finally succeeded adding: ", email)
+        raise ValueError("Could not find the user to add, we're going to error so Stripe tries again.")
     return (x.status_code == 204 or x.status_code == 200)
