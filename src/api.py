@@ -1,5 +1,4 @@
 import datetime
-import trace
 import traceback
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from aws_lambda_powertools.event_handler import (
@@ -11,7 +10,6 @@ from aws_lambda_powertools.event_handler import (
 import os
 import json
 
-from flask_migrate import current
 from aad import add_to_group, add_to_tenant, get_entra_access_token, get_user_exists
 from utils.general import create_checkout_session, get_run_environment, get_logger, configure_request_id, check_paid_member, get_parameter_from_sm
 from utils.graph import GraphAPI
