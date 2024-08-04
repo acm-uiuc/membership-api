@@ -3,7 +3,7 @@ from moto import mock_aws
 import boto3
 import os
 import json
-from ..utils import get_parameter_from_sm
+from .general import get_parameter_from_sm
 
 
 key_data = {"CLIENT_DATA": "12345", "CLIENT_SECRET": "12345"}

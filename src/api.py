@@ -9,8 +9,8 @@ from aws_lambda_powertools.event_handler import (
 import os
 import json
 from aad import add_to_group, add_to_tenant, get_entra_access_token, get_user_exists
-from utils import create_checkout_session, get_run_environment, get_logger, configure_request_id, check_paid_member, get_parameter_from_sm
-from graph import GraphAPI
+from utils.general import create_checkout_session, get_run_environment, get_logger, configure_request_id, check_paid_member, get_parameter_from_sm
+from utils.graph import GraphAPI
 import boto3
 import stripe
 RUN_ENV = get_run_environment()
