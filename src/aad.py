@@ -6,10 +6,10 @@ def get_entra_access_token(aws_secret):
     print("Getting access token")
     url = "https://login.microsoftonline.com/c8d9148f-9a59-4db3-827d-42ea0c2b6e2e/oauth2/v2.0/token"
     body = {
-        'client_id': aws_secret['CLIENT_ID'],
+        'client_id': aws_secret['AAD_CLIENT_ID'],
         'scope': 'https://graph.microsoft.com/.default',
         'grant_type': 'client_credentials',
-        'client_secret': aws_secret['CLIENT_SECRET']
+        'client_secret': aws_secret['AAD_CLIENT_SECRET']
     }
     x = requests.post(url, data=body)
     return x.json()

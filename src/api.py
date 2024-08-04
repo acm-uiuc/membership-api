@@ -22,9 +22,10 @@ dynamo = boto3.resource('dynamodb', region_name=os.environ.get("AWS_REGION", "us
 TOKEN_VALIDITY_SECONDS = 3590 # it's really 3600 but we save them slightly shorter
 TABLE_NAME='infra-membership-api-cache'
 EXTERNAL_LIST_TABLE_NAME = 'infra-membership-api-external-lists'
-AAD_SECRET_ID='infra-membership-api-aad-secret'
-STRIPE_SECRET_ID='infra-membership-api-stripe-secret'
+SECRET_ID='infra-membership-api-secrets'
 MEMBERSHIP_PRODUCT_ID = os.environ.get("MembershipProductId")
+
+global_credentials = get_parameter_from_sm(client, SECRET_ID)
 
 table = dynamo.Table(TABLE_NAME) # type: ignore
 list_table = dynamo.Table(EXTERNAL_LIST_TABLE_NAME) # type: ignore
@@ -59,9 +60,8 @@ def healthz():
 
 @app.get("/api/v1/checkMembership")
 def check_membership():
-    netid = (app.current_event.get_query_string_value(name="netid", default_value="") or "").lower()
-    aad_secret = json.loads(client.get_secret_value(SecretId=AAD_SECRET_ID)['SecretString'])
-    gapi = GraphAPI(aad_secret['CLIENT_ID'], aad_secret['CLIENT_SECRET'])
+    netid = (app.current_event.get_query_string_value(name="netId", default_value="") or "").lower()
+    gapi = GraphAPI(global_credentials['AAD_CLIENT_ID'], global_credentials['AAD_CLIENT_SECRET'])
     return Response(
         status_code=200,
         content_type=content_types.APPLICATION_JSON,
@@ -73,7 +73,7 @@ def check_membership():
 
 @app.get("/api/v1/checkExternalMembership")
 def check_external_membership():
-    netid = (app.current_event.get_query_string_value(name="netid", default_value="") or "").lower()
+    netid = (app.current_event.get_query_string_value(name="netId", default_value="") or "").lower()
     check_list = (app.current_event.get_query_string_value(name="list", default_value="") or "").lower()
     member = False
     try:
@@ -105,16 +105,14 @@ def get_checkout_session():
             content_type=content_types.APPLICATION_JSON,
             body={"message": "No NetID provided"}
         )
-    aad_secret = json.loads(client.get_secret_value(SecretId=AAD_SECRET_ID)['SecretString'])
-    gapi = GraphAPI(aad_secret['CLIENT_ID'], aad_secret['CLIENT_SECRET'])
+    gapi = GraphAPI(global_credentials['AAD_CLIENT_ID'], global_credentials['AAD_CLIENT_SECRET'])
     if check_paid_member(gapi, netid):
         return Response(
             status_code=409,
             content_type=content_types.APPLICATION_JSON,
             body={"message": f"{netid} is already a paid member."}
         )
-    keys = get_parameter_from_sm(client, STRIPE_SECRET_ID)
-    stripe_key = keys['STRIPE_KEY_CHECKOUT']
+    stripe_key = global_credentials['STRIPE_KEY_CHECKOUT']
     link = create_checkout_session(netid, stripe_key)
     return Response(
         status_code=200,
@@ -124,16 +122,14 @@ def get_checkout_session():
 
 @app.post("/api/v1/provisioning/member")
 def provision_member():
-    aws_stripe_secret = get_parameter_from_sm(client, STRIPE_SECRET_ID)
-    aws_aad_secret = get_parameter_from_sm(client, AAD_SECRET_ID)
-    secret = aws_stripe_secret['AAD_ENROLL_ENDPOINT_SECRET']
-    stripe.api_key = aws_stripe_secret['STRIPE_KEY_CHECKOUT']
+    secret = global_credentials['AAD_ENROLL_ENDPOINT_SECRET']
+    stripe.api_key = global_credentials['STRIPE_KEY_CHECKOUT']
     try:
         if app.current_event.get_query_string_value(name="test"):
             logger.info("Using test key")
-            secret = aws_stripe_secret['AAD_ENROLL_TEST_ENDPOINT_SECRET']
+            secret = global_credentials['AAD_ENROLL_TEST_ENDPOINT_SECRET']
     except Exception:
-        secret = aws_stripe_secret['AAD_ENROLL_ENDPOINT_SECRET']
+        secret = global_credentials['AAD_ENROLL_ENDPOINT_SECRET']
     body = app.current_event['body']
     try:
         stripe.Webhook.construct_event(body, app.current_event['headers']['Stripe-Signature'], secret)
@@ -183,7 +179,7 @@ def provision_member():
             content_type=content_types.APPLICATION_JSON,
             body={"message": "No email in purchase payload."}
         )
-    entra_token = get_entra_access_token(aws_aad_secret)['access_token']
+    entra_token = get_entra_access_token(global_credentials)['access_token']
     response_object = {}
     if get_user_exists(entra_token, email):
         logger.info("Email already exists, not inviting: ", email)

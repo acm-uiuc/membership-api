@@ -8,10 +8,11 @@ import os
 dynamo = boto3.resource(
     "dynamodb", region_name=os.environ.get("AWS_REGION", "us-east-1")
 )
+PAID_MEMBERS_GROUP = os.environ.get("PaidMembersEntraGroup")
 TOKEN_URL = "https://login.microsoftonline.com/c8d9148f-9a59-4db3-827d-42ea0c2b6e2e/oauth2/v2.0/token"
-MEMBERS_URL = "https://graph.microsoft.com/v1.0/groups/172fd9ee-69f0-4384-9786-41ff1a43cf8e/members"
+MEMBERS_URL = f"https://graph.microsoft.com/v1.0/groups/{PAID_MEMBERS_GROUP}/members"
 TABLE_NAME = "infra-membership-api-cache"
-table = dynamo.Table(TABLE_NAME)
+table = dynamo.Table(TABLE_NAME) # type: ignore
 
 
 @dataclass
@@ -39,7 +40,7 @@ class GraphAPI:
             self.token.access_token = parsed["access_token"]
             self.token.expires_in = response["Item"]["TimeToLive"] - int(time.time())
             print("Got AAD token from dynamo cache.")
-        except:
+        except Exception:
             data: dict = {
                 "grant_type": "client_credentials",
                 "client_id": self.clientId,

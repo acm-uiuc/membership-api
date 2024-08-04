@@ -81,7 +81,6 @@ Resources:
     Properties:
       Location: ./iam.yml
       Parameters:
-        RunEnvironment: !Ref RunEnvironment
         LambdaFunctionName: !Sub ${ApplicationPrefix}-lambda
         AuthLambdaFunctionName: !Sub ${ApplicationPrefix}-auth-lambda
 
@@ -135,7 +134,7 @@ Resources:
       Runtime: python3.11
       Description: !Sub "${ApplicationFriendlyName} API Lambda"
       FunctionName: !Sub ${ApplicationPrefix}-lambda
-      Handler: app.lambda_handler
+      Handler: api.lambda_handler
       MemorySize: 512
       Role: !GetAtt AppSecurityRoles.Outputs.MainFunctionRoleArn
       Timeout: 60
