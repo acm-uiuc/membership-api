@@ -107,7 +107,6 @@ def check_membership():
         body={
             "netId": netid,
             "isPaidMember": is_paid_member,
-            'source': source
         },
     )
 
