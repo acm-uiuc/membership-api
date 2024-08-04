@@ -51,7 +51,6 @@ def add_to_group(token, email, i=0):
     upn = "{}_illinois.edu%23EXT%23@acmillinois.onmicrosoft.com".format(netid)
     reqjson = json.dumps({"@odata.id": "https://graph.microsoft.com/v1.0/users/{}".format(upn)})
     x = requests.post(reqpage, headers = headers, data=reqjson)
-    print(x.text)
     try:
         json_resp = x.json()
     except Exception:
