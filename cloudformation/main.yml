@@ -102,6 +102,7 @@ Resources:
       BillingMode: 'PAY_PER_REQUEST'
       TableName: infra-membership-api-provisioning-logs
       DeletionProtectionEnabled: true
+      PointInTimeRecoveryEnabled: !If [IsProd, true, false]
       AttributeDefinitions:
         - AttributeName: email
           AttributeType: S
