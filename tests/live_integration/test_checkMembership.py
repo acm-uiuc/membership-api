@@ -6,7 +6,7 @@ def test_valid_member(api_client):
 def test_invalid_member(api_client):
     response = api_client.get("/api/v1/checkMembership?netId=invalid")
     assert response.status_code == 200
-    assert response.json() == {"netId": "invalid", "isPaidMember": False}
+    assert response.json() == {"netId": "invalid", "isPaidMember": False,}
 
 def test_invalid_parameters(api_client):
     response = api_client.get("/api/v1/checkMembership")

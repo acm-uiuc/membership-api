@@ -74,9 +74,22 @@ def check_membership():
             },
         )
     gapi = GraphAPI(global_credentials['AAD_CLIENT_ID'], global_credentials['AAD_CLIENT_SECRET'])
-    is_paid_member = check_paid_member(gapi, netid)
+    # check dynamodb first. if not there, we'll check graph API
+    is_paid_member = False
+    source = ''
+    response = logging_table.get_item(
+        Key={
+            'email': f"{netid}@illinois.edu"
+        } 
+    )
+    if 'Item' in response:
+        is_paid_member = True
+        source = 'dynamo'
+    else:
+        source = 'aad'
+        is_paid_member = check_paid_member(gapi, netid)
     current_timestamp = datetime.datetime.now().isoformat()
-    if is_paid_member:
+    if is_paid_member and 'Item' not in response: # paid member wasn't originally in the dynamo db
         # populate our cache since lot of our netids aren't in it
         condition = "attribute_not_exists(email)"
         # Put the item in the table only if the email does not already exist
@@ -90,9 +103,11 @@ def check_membership():
     return Response(
         status_code=200,
         content_type=content_types.APPLICATION_JSON,
+        headers={"X-ACM-Membership-Source": source},
         body={
             "netId": netid,
-            "isPaidMember": is_paid_member
+            "isPaidMember": is_paid_member,
+            'source': source
         },
     )
 
