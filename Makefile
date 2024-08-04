@@ -52,6 +52,7 @@ deploy_dev: check_account_dev build
 
 install_test_deps:
 	pip install -r $(integration_test_directory_root)/requirements.txt
+	pip install -r $(src_directory_root)/requirements.txt
 	pip install -r $(src_directory_root)/requirements-testing.txt
 
 test_live_integration: install_test_deps
