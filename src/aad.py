@@ -3,6 +3,7 @@ import json
 import time
 import os
 MAX_ATTEMPTS = 20
+SLEEP_TIME = 2.5
 def get_entra_access_token(aws_secret):
     print("Getting access token")
     url = "https://login.microsoftonline.com/c8d9148f-9a59-4db3-827d-42ea0c2b6e2e/oauth2/v2.0/token"
@@ -66,16 +67,10 @@ def add_to_group(token, email, i=0):
             print("Added to Paid Members group: ", email)
         return True
     if (x.status_code >= 400 and i < MAX_ATTEMPTS):
-        print("User not found, retrying, try: ", i)
-        time.sleep(5)
+        print(f"User not found, retrying in {SLEEP_TIME} seconds, try: ", i)
+        time.sleep(SLEEP_TIME)
         return add_to_group(token, email, i+1)
         # the user may exist the microservices may just not have synced yet
     elif (x.status_code >= 400):
-        print("Could not find the user to add, we're going to error so Stripe tries again.")
-        return {
-            'statusCode': '500',
-            'body': "We tried to add the user to the paid group but couldn't find them, likely microservices issue. Failing so Stripe retries."
-        }
-    else:
-        print("Finally succeeded adding: ", email)
+        raise ValueError("Could not find the user to add, we're going to error so Stripe tries again.")
     return (x.status_code == 204 or x.status_code == 200)
