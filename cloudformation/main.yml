@@ -95,6 +95,20 @@ Resources:
         AuthLambdaFunctionName: !Sub ${ApplicationPrefix}-auth-lambda
         LogRetentionDays: !FindInMap [General, !Ref RunEnvironment, LogRetentionDays]
 
+  MembershipApiLoggingTable:
+    Type: 'AWS::DynamoDB::Table'
+    DeletionPolicy: "Retain"  
+    Properties:
+      BillingMode: 'PAY_PER_REQUEST'
+      TableName: infra-membership-api-provisioning-logs
+      DeletionProtectionEnabled: true
+      AttributeDefinitions:
+        - AttributeName: email
+          AttributeType: S
+      KeySchema:
+        - AttributeName: email
+          KeyType: HASH
+
   MembershipApiExternalQueryListsTable:
     Type: 'AWS::DynamoDB::Table'
     DeletionPolicy: "Retain"  

@@ -1,3 +1,5 @@
+import datetime
+import trace
 import traceback
 from aws_lambda_powertools.utilities.typing import LambdaContext
 from aws_lambda_powertools.event_handler import (
@@ -8,6 +10,8 @@ from aws_lambda_powertools.event_handler import (
 )
 import os
 import json
+
+from flask_migrate import current
 from aad import add_to_group, add_to_tenant, get_entra_access_token, get_user_exists
 from utils.general import create_checkout_session, get_run_environment, get_logger, configure_request_id, check_paid_member, get_parameter_from_sm
 from utils.graph import GraphAPI
@@ -22,6 +26,7 @@ dynamo = boto3.resource('dynamodb', region_name=os.environ.get("AWS_REGION", "us
 TOKEN_VALIDITY_SECONDS = 3590 # it's really 3600 but we save them slightly shorter
 TABLE_NAME='infra-membership-api-cache'
 EXTERNAL_LIST_TABLE_NAME = 'infra-membership-api-external-lists'
+PROVISIONING_LOGGING_TABLE = 'infra-membership-api-provisioning-logs'
 SECRET_ID='infra-membership-api-secrets'
 MEMBERSHIP_PRODUCT_ID = os.environ.get("MembershipProductId")
 
@@ -29,6 +34,7 @@ global_credentials = get_parameter_from_sm(client, SECRET_ID)
 
 table = dynamo.Table(TABLE_NAME) # type: ignore
 list_table = dynamo.Table(EXTERNAL_LIST_TABLE_NAME) # type: ignore
+logging_table = dynamo.Table(PROVISIONING_LOGGING_TABLE) # type: ignore
 
 extra_origins = os.environ.get("ValidCorsOrigins", "https://acm.illinois.edu").split(",")
 
@@ -70,12 +76,25 @@ def check_membership():
             },
         )
     gapi = GraphAPI(global_credentials['AAD_CLIENT_ID'], global_credentials['AAD_CLIENT_SECRET'])
+    is_paid_member = check_paid_member(gapi, netid)
+    current_timestamp = datetime.datetime.now().isoformat()
+    if is_paid_member:
+        # populate our cache since lot of our netids aren't in it
+        condition = "attribute_not_exists(email)"
+        # Put the item in the table only if the email does not already exist
+        try:
+            logging_table.put_item(
+                Item={'email': f"{netid}@illinois.edu", "inserted_at": current_timestamp, "inserted_by": "membership-api-query"},
+                ConditionExpression=condition
+            )
+        except Exception:
+            print(traceback.format_exc())
     return Response(
         status_code=200,
         content_type=content_types.APPLICATION_JSON,
         body={
             "netId": netid,
-            "isPaidMember": check_paid_member(gapi, netid)
+            "isPaidMember": is_paid_member
         },
     )
 
@@ -199,6 +218,7 @@ def provision_member():
         )
     entra_token = get_entra_access_token(global_credentials)['access_token']
     response_object = {}
+    current_timestamp = datetime.datetime.now().isoformat()
     if get_user_exists(entra_token, email):
         logger.info("Email already exists, not inviting: " + email)
         response_object = {"message": f"Added (without inviting) {email} to paid members group"}
@@ -224,6 +244,17 @@ def provision_member():
             content_type=content_types.APPLICATION_JSON,
             body={"message": "Could not add to group, erroring so Stripe retries the event."}
         )
+    try:
+        logging_table.put_item(
+            Item={
+                'email': email,
+                'inserted_at': current_timestamp,
+                'inserted_by': 'membership-api-provisioned'
+            } 
+        )
+    except Exception:
+        logger.warn(f"Failed to log purchase to dynamo for email {email}: " + traceback.format_exc())
+    response_object['inserted_at'] = current_timestamp
     return Response(
         status_code=201,
         content_type=content_types.APPLICATION_JSON,

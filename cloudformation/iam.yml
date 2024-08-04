@@ -93,6 +93,7 @@ Resources:
               Resource:
                 - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/infra-membership-api-cache
                 - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/infra-membership-api-external-lists
+                - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/infra-membership-api-provisioning-logs
         PolicyName: lambda-dynamo
 Outputs:
   MainFunctionRoleArn:
