@@ -1,4 +1,3 @@
-from tkinter.tix import MAX
 import requests
 import json
 import time
