@@ -1,0 +1,4 @@
+aiohttp
+aws_lambda_powertools
+requests
+stripe

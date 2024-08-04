@@ -6,11 +6,6 @@ info:
     name: ACM Infrastructure Team
     email: infra@acm.illinois.edu
 
-servers:
-  - url:
-      Ref: ApiDomainName
-
-
 paths:
   /:
     get:
@@ -34,7 +29,7 @@ paths:
         contentHandling: CONVERT_TO_TEXT
         type: aws_proxy
         uri: 
-          Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${LambdaFunctionName}/invocations
+          Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ApplicationPrefix}-lambda/invocations
 
   /api/v1/healthz:
     get:
@@ -58,7 +53,7 @@ paths:
         contentHandling: CONVERT_TO_TEXT
         type: aws_proxy
         uri: 
-          Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${LambdaFunctionName}/invocations
+          Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ApplicationPrefix}-lambda/invocations
 
   /api/v1/checkMembership:
     get:
@@ -87,7 +82,7 @@ paths:
         contentHandling: CONVERT_TO_TEXT
         type: aws_proxy
         uri: 
-          Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${LambdaFunctionName}/invocations
+          Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ApplicationPrefix}-lambda/invocations
 
   /api/v1/checkExternalMembership:
     get:
@@ -122,7 +117,7 @@ paths:
         contentHandling: CONVERT_TO_TEXT
         type: aws_proxy
         uri: 
-          Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${LambdaFunctionName}/invocations
+          Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ApplicationPrefix}-lambda/invocations
 
   
   /api/v1/checkout/session:
@@ -152,7 +147,7 @@ paths:
         contentHandling: CONVERT_TO_TEXT
         type: aws_proxy
         uri: 
-          Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${StripeLambdaFunctionName}/invocations
+          Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ApplicationPrefix}-lambda/invocations
   
   /api/v1/provisioning/member:
     post:
@@ -174,5 +169,5 @@ paths:
         contentHandling: CONVERT_TO_TEXT
         type: aws_proxy
         uri: 
-          Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${EnrollLambdaFunctionName}/invocations
+          Fn::Sub: arn:aws:apigateway:${AWS::Region}:lambda:path/2015-03-31/functions/arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${ApplicationPrefix}-lambda/invocations
   
