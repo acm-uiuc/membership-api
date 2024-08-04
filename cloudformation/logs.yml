@@ -1,0 +1,39 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: ACM Membership API - Log Groups
+Transform: AWS::Serverless-2016-10-31
+Parameters:
+  LambdaFunctionName:
+    Type: String
+    AllowedPattern: ^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$
+  AuthLambdaFunctionName:
+    Default: undefined
+    Type: String
+    AllowedPattern: ^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$
+  LogRetentionDays:
+    Type: Number
+Conditions:
+  AuthorizerFunctionEnabled:
+    Fn::Not:
+    - Fn::Equals:
+      - Ref: AuthLambdaFunctionName
+      - undefined
+Resources:
+  AppApiLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${LambdaFunctionName}
+      RetentionInDays:
+        Ref: LogRetentionDays
+    Metadata:
+      SamResourceId: AppApiLambdaLogGroup
+  AppAuthLambdaLogGroup:
+    Type: AWS::Logs::LogGroup
+    Condition: AuthorizerFunctionEnabled
+    Properties:
+      LogGroupName:
+        Fn::Sub: /aws/lambda/${AuthLambdaFunctionName}
+      RetentionInDays:
+        Ref: LogRetentionDays
+    Metadata:
+      SamResourceId: AppAuthLambdaLogGroup
