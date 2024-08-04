@@ -85,5 +85,6 @@ jobs:
     needs:
       - deploy-aws-prod
     steps:
+      - uses: actions/checkout@v3
       - name: Call the health check script
         run: make prod_health_check
