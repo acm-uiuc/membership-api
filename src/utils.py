@@ -6,7 +6,7 @@ from typing import Dict
 import requests
 import asyncio
 
-from graph import GraphAPI
+from .graph import GraphAPI
 
 # Get a JSON secret from AWS Secrets Manager
 def get_parameter_from_sm(sm_client, parameter_name) -> Dict[str, str | int]:
