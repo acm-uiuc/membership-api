@@ -59,6 +59,7 @@ test_live_integration: install_test_deps
 	APPLICATION_KEY=$(application_key) pytest -rP $(integration_test_directory_root)
 
 test_unit: install_test_deps
+	python src/api.py
 	APPLICATION_KEY=$(application_key) pytest -rP $(src_directory_root)
 
 dev_health_check:
