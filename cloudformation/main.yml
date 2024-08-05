@@ -85,6 +85,7 @@ Resources:
       Parameters:
         LambdaFunctionName: !Sub ${ApplicationPrefix}-lambda
         AuthLambdaFunctionName: !Sub ${ApplicationPrefix}-auth-lambda
+        SNSTopicName: !Sub ${ApplicationPrefix}-member-added-topic
 
   AppLogGroups:
     Type: AWS::Serverless::Application
@@ -304,4 +305,4 @@ Resources:
   MemberAddedSNSTopic:
     Type: AWS::SNS::Topic
     Properties:
-      TopicName: "infra-membership-api-member-added"
+      TopicName: !Sub ${ApplicationPrefix}-member-added-topic
