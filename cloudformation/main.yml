@@ -300,3 +300,8 @@ Resources:
           - ":"
           - !Ref AppApiGateway
           - "/*/*/*"
+
+  MemberAddedSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: "infra-membership-api-member-added"
