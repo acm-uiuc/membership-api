@@ -81,7 +81,7 @@ class GraphAPI:
                     return False
                 return (
                     parsed["value"][0]["userPrincipalName"]
-                    == f"{netID}_illinois.edu#EXT#@acmillinois.onmicrosoft.com"
+                    == f"{netID}@acm.illinois.edu"
                 )
 
 
