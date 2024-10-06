@@ -10,7 +10,7 @@ from aws_lambda_powertools.event_handler import (
 import os
 import json
 
-from aad import add_to_group, add_to_tenant, get_entra_access_token, get_user_exists
+from aad import add_to_group, add_to_tenant, change_upn, get_entra_access_token, wait_for_upn
 from utils.general import create_checkout_session, get_run_environment, get_logger, configure_request_id, check_paid_member, get_parameter_from_sm
 from utils.graph import GraphAPI
 import boto3
@@ -222,7 +222,8 @@ def provision_member():
     entra_token = get_entra_access_token(global_credentials)['access_token']
     response_object = {}
     current_timestamp = datetime.datetime.now().isoformat()
-    if get_user_exists(entra_token, email):
+    netid = email.split("@")[0]
+    if wait_for_upn(entra_token, netid, oneshot=True):
         logger.info("Email already exists, not inviting: " + email)
         response_object = {"message": f"Added (without inviting) {email} to paid members group"}
     else:
@@ -236,10 +237,34 @@ def provision_member():
                 content_type=content_types.APPLICATION_JSON,
                 body={"message": "Could not invite to tenant, erroring so Stripe retries the event."}
             )
+    upn = None
     try:
-        logger.info("Adding to Paid Members Group: " + email)
-        add_to_group(entra_token, email)
-        response_object = {"message": f"Added and invited {email} to paid members group"}
+        logger.info("Attempting to find UPN: " + email)
+        upn = wait_for_upn(entra_token, netid)
+    except Exception as e:
+        logger.error(f"Error adding {email} to tenant: " + traceback.format_exc())
+        return Response(
+            status_code=500,
+            content_type=content_types.APPLICATION_JSON,
+            body={"message": str(e)}
+        )
+    internal_upn = f"{netid}@acm.illinois.edu"
+    if upn != internal_upn:
+        try:
+            logger.info(f"Changing UPN for {upn} to {internal_upn}")
+            change_upn(entra_token, upn, internal_upn)
+            upn = internal_upn
+        except Exception as e:
+            logger.error(f"Error internalizing {email} UPN: " + traceback.format_exc())
+            return Response(
+                status_code=500,
+                content_type=content_types.APPLICATION_JSON,
+                body={"message": str(e)}
+            )
+    try:
+        logger.info("Adding UPN to Paid Members Group: " + upn)
+        add_to_group(entra_token, upn)
+        response_object = {"message": f"Added and invited {upn} to paid members group"}
     except Exception:
         logger.error(f"Error adding {email} to paid members group: " + traceback.format_exc())
         return Response(
