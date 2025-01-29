@@ -15,9 +15,10 @@ def provision_membership_pkpass(email: str, logger: Logger):
             async with session.post(
                 f"{core_api_url}/api/v1/mobileWallet/membership?email={email}",
                 headers={"Content-Type": "application/json"},
+                json={},
             ) as s:
                 logger.info(
-                    f"Core API membership pkpass/email ID: {s.headers['x-amzn-requestid']}"
+                    f"Core API membership pkpass/email ID: {s.headers['x-amzn-requestid']} with status {s.status}"
                 )
 
     loop = asyncio.get_event_loop()
