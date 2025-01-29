@@ -13,7 +13,8 @@ def provision_membership_pkpass(email: str, logger: Logger):
     async def _request():
         async with aiohttp.ClientSession() as session:
             async with session.post(
-                f"{core_api_url}/api/v1/mobileWallet/membership?email={email}"
+                f"{core_api_url}/api/v1/mobileWallet/membership?email={email}",
+                headers={"Content-Type": "application/json"},
             ) as s:
                 logger.info(
                     f"Core API membership pkpass/email ID: {s.headers['x-amzn-requestid']}"
