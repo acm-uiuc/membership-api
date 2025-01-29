@@ -16,4 +16,5 @@ def provision_membership_pkpass(email: str):
             ):
                 pass
 
-    asyncio.create_task(_request())
+    loop = asyncio.get_event_loop()
+    loop.create_task(_request())
