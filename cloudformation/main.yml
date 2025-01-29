@@ -50,6 +50,7 @@ Mappings:
       MembershipProductId: prod_Qb9NAY6BWMYbCS
       MembershipPriceId: price_1Pjx4uDiGOXU9RuS7gtNTied
       PaidMembersEntraGroup: 9222451f-b354-4e64-ba28-c0f367a277c2
+      CoreApiUrl: https://infra-core-api.aws.qa.acmuiuc.org
     prod:
       ApiCertificateArn: arn:aws:acm:us-east-1:298118738376:certificate/6142a0e2-d62f-478e-bf15-5bdb616fe705
       HostedZoneId: Z05246633460N5MEB9DBF
@@ -61,6 +62,7 @@ Mappings:
       MembershipProductId: prod_NEjlU6abj4m6ua
       MembershipPriceId: price_1MUGIRDiGOXU9RuSChPYK6wZ
       PaidMembersEntraGroup: 172fd9ee-69f0-4384-9786-41ff1a43cf8e
+      CoreApiUrl: https://infra-core-api.aws.acmuiuc.org
   EnvironmentToCidr:
     dev:
       SecurityGroupIds:
@@ -163,6 +165,7 @@ Resources:
           MembershipProductId: !FindInMap [ApiGwConfig, !Ref RunEnvironment, MembershipProductId]
           MembershipPriceId: !FindInMap [ApiGwConfig, !Ref RunEnvironment, MembershipPriceId]
           PaidMembersEntraGroup: !FindInMap [ApiGwConfig, !Ref RunEnvironment, PaidMembersEntraGroup]
+          CoreApiUrl: !FindInMap [ApiGwConfig, !Ref RunEnvironment, CoreApiUrl]
       VpcConfig: 
         Ipv6AllowedForDualStack: !If [ShouldAttachVpc, True, !Ref AWS::NoValue]
         SecurityGroupIds: !If [ShouldAttachVpc, !FindInMap [EnvironmentToCidr, !Ref RunEnvironment, SecurityGroupIds], !Ref AWS::NoValue]

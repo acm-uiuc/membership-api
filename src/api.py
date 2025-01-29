@@ -10,31 +10,52 @@ from aws_lambda_powertools.event_handler import (
 import os
 import json
 
-from aad import add_to_group, add_to_tenant, change_upn, get_entra_access_token, wait_for_upn
-from utils.general import create_checkout_session, get_run_environment, get_logger, configure_request_id, check_paid_member, get_parameter_from_sm
+from aad import (
+    add_to_group,
+    add_to_tenant,
+    change_upn,
+    get_entra_access_token,
+    wait_for_upn,
+)
+from src.utils.mobileWallet import provision_membership_pkpass
+from utils.general import (
+    create_checkout_session,
+    get_run_environment,
+    get_logger,
+    configure_request_id,
+    check_paid_member,
+    get_parameter_from_sm,
+)
 from utils.graph import GraphAPI
 import boto3
 import stripe
+
 RUN_ENV = get_run_environment()
 logger = get_logger()
 
-client = boto3.client('secretsmanager', region_name=os.environ.get("AWS_REGION", "us-east-1"))
-dynamo = boto3.resource('dynamodb', region_name=os.environ.get("AWS_REGION", "us-east-1"))
+client = boto3.client(
+    "secretsmanager", region_name=os.environ.get("AWS_REGION", "us-east-1")
+)
+dynamo = boto3.resource(
+    "dynamodb", region_name=os.environ.get("AWS_REGION", "us-east-1")
+)
 
-TOKEN_VALIDITY_SECONDS = 3590 # it's really 3600 but we save them slightly shorter
-TABLE_NAME='infra-membership-api-cache'
-EXTERNAL_LIST_TABLE_NAME = 'infra-membership-api-external-lists'
-PROVISIONING_LOGGING_TABLE = 'infra-membership-api-provisioning-logs'
-SECRET_ID='infra-membership-api-secrets'
+TOKEN_VALIDITY_SECONDS = 3590  # it's really 3600 but we save them slightly shorter
+TABLE_NAME = "infra-membership-api-cache"
+EXTERNAL_LIST_TABLE_NAME = "infra-membership-api-external-lists"
+PROVISIONING_LOGGING_TABLE = "infra-membership-api-provisioning-logs"
+SECRET_ID = "infra-membership-api-secrets"
 MEMBERSHIP_PRODUCT_ID = os.environ.get("MembershipProductId")
 
 global_credentials = get_parameter_from_sm(client, SECRET_ID)
 
-table = dynamo.Table(TABLE_NAME) # type: ignore
-list_table = dynamo.Table(EXTERNAL_LIST_TABLE_NAME) # type: ignore
-logging_table = dynamo.Table(PROVISIONING_LOGGING_TABLE) # type: ignore
+table = dynamo.Table(TABLE_NAME)  # type: ignore
+list_table = dynamo.Table(EXTERNAL_LIST_TABLE_NAME)  # type: ignore
+logging_table = dynamo.Table(PROVISIONING_LOGGING_TABLE)  # type: ignore
 
-extra_origins = os.environ.get("ValidCorsOrigins", "https://acm.illinois.edu").split(",")
+extra_origins = os.environ.get("ValidCorsOrigins", "https://acm.illinois.edu").split(
+    ","
+)
 
 cors_config = CORSConfig(
     allow_origin="https://acm.illinois.edu",
@@ -45,6 +66,7 @@ cors_config = CORSConfig(
 )
 app = APIGatewayRestResolver(cors=cors_config)
 
+
 @app.get("/api/v1/healthz")
 def healthz():
     return Response(
@@ -53,41 +75,46 @@ def healthz():
         body={"message": "UP"},
     )
 
+
 @app.get("/api/v1/checkMembership")
 def check_membership():
-    netid = (app.current_event.get_query_string_value(name="netId", default_value="") or "").lower()
+    netid = (
+        app.current_event.get_query_string_value(name="netId", default_value="") or ""
+    ).lower()
     if netid == "":
         return Response(
             status_code=400,
             content_type=content_types.APPLICATION_JSON,
-            body={
-                "message": "No NetID provided."
-            },
+            body={"message": "No NetID provided."},
         )
-    gapi = GraphAPI(global_credentials['AAD_CLIENT_ID'], global_credentials['AAD_CLIENT_SECRET'])
+    gapi = GraphAPI(
+        global_credentials["AAD_CLIENT_ID"], global_credentials["AAD_CLIENT_SECRET"]
+    )
     # check dynamodb first. if not there, we'll check graph API
     is_paid_member = False
-    source = ''
-    response = logging_table.get_item(
-        Key={
-            'email': f"{netid}@illinois.edu"
-        } 
-    )
-    if 'Item' in response:
+    source = ""
+    response = logging_table.get_item(Key={"email": f"{netid}@illinois.edu"})
+    if "Item" in response:
         is_paid_member = True
-        source = 'dynamo'
+        source = "dynamo"
     else:
-        source = 'aad'
+        source = "aad"
         is_paid_member = check_paid_member(gapi, netid)
     current_timestamp = datetime.datetime.now().isoformat()
-    if is_paid_member and 'Item' not in response: # paid member wasn't originally in the dynamo db
+    if (
+        is_paid_member and "Item" not in response
+    ):  # paid member wasn't originally in the dynamo db
         # populate our cache since lot of our netids aren't in it
         condition = "attribute_not_exists(email)"
         # Put the item in the table only if the email does not already exist
         try:
             logging_table.put_item(
-                Item={'email': f"{netid}@illinois.edu", "inserted_at": current_timestamp, "inserted_by": "membership-api-query"},
-                ConditionExpression=condition
+                Item={
+                    "email": f"{netid}@illinois.edu",
+                    "inserted_at": current_timestamp,
+                    "inserted_by": "membership-api-query",
+                },
+                ConditionExpression=condition,
             )
         except Exception:
             print(traceback.format_exc())
@@ -101,91 +128,88 @@ def check_membership():
         },
     )
 
+
 @app.get("/api/v1/checkExternalMembership")
 def check_external_membership():
-    netid = (app.current_event.get_query_string_value(name="netId", default_value="") or "").lower()
-    check_list = (app.current_event.get_query_string_value(name="list", default_value="") or "").lower()
+    netid = (
+        app.current_event.get_query_string_value(name="netId", default_value="") or ""
+    ).lower()
+    check_list = (
+        app.current_event.get_query_string_value(name="list", default_value="") or ""
+    ).lower()
     if netid == "":
         return Response(
             status_code=400,
             content_type=content_types.APPLICATION_JSON,
-            body={
-                "message": "No NetID provided."
-            },
+            body={"message": "No NetID provided."},
         )
     if check_list == "":
         return Response(
             status_code=400,
             content_type=content_types.APPLICATION_JSON,
-            body={
-                "message": "No check list provided."
-            },
+            body={"message": "No check list provided."},
         )
     member = False
     try:
-        response = list_table.get_item(
-            Key={
-                'netid_list': f"{netid}_{check_list}"
-            } 
-        )
-        if 'Item' in response:
+        response = list_table.get_item(Key={"netid_list": f"{netid}_{check_list}"})
+        if "Item" in response:
             member = True
     except KeyError:
         member = False
     return Response(
         status_code=200,
         content_type=content_types.APPLICATION_JSON,
-        body={
-            "netId": netid,
-            "list": check_list,
-            "isPaidMember": member
-        },
+        body={"netId": netid, "list": check_list, "isPaidMember": member},
     )
+
 
 @app.get("/api/v1/checkout/session")
 def get_checkout_session():
-    netid = (app.current_event.get_query_string_value(name="netid", default_value="") or "").lower()
+    netid = (
+        app.current_event.get_query_string_value(name="netid", default_value="") or ""
+    ).lower()
     if netid == "":
         return Response(
             status_code=400,
             content_type=content_types.APPLICATION_JSON,
-            body={"message": "No NetID provided"}
+            body={"message": "No NetID provided"},
         )
-    gapi = GraphAPI(global_credentials['AAD_CLIENT_ID'], global_credentials['AAD_CLIENT_SECRET'])
+    gapi = GraphAPI(
+        global_credentials["AAD_CLIENT_ID"], global_credentials["AAD_CLIENT_SECRET"]
+    )
     if check_paid_member(gapi, netid):
         return Response(
             status_code=409,
             content_type=content_types.APPLICATION_JSON,
-            body={"message": f"{netid} is already a paid member."}
+            body={"message": f"{netid} is already a paid member."},
         )
-    stripe_key = global_credentials['STRIPE_KEY_CHECKOUT']
+    stripe_key = global_credentials["STRIPE_KEY_CHECKOUT"]
     link = create_checkout_session(netid, stripe_key)
-    return Response(
-        status_code=200,
-        content_type=content_types.TEXT_PLAIN,
-        body=link
-    )
+    return Response(status_code=200, content_type=content_types.TEXT_PLAIN, body=link)
+
 
 @app.post("/api/v1/provisioning/member")
 def provision_member():
-    secret = global_credentials['AAD_ENROLL_ENDPOINT_SECRET']
-    stripe.api_key = global_credentials['STRIPE_KEY_CHECKOUT']
-    body = app.current_event['body']
+    secret = global_credentials["AAD_ENROLL_ENDPOINT_SECRET"]
+    stripe.api_key = global_credentials["STRIPE_KEY_CHECKOUT"]
+    body = app.current_event["body"]
     try:
-        stripe.Webhook.construct_event(body, app.current_event['headers']['Stripe-Signature'], secret)
+        stripe.Webhook.construct_event(
+            body, app.current_event["headers"]["Stripe-Signature"], secret
+        )
     except Exception:
         logger.info(traceback.format_exc())
         return Response(
             status_code=421,
             content_type=content_types.APPLICATION_JSON,
-            body={"message": "Invalid payload."}
+            body={"message": "Invalid payload."},
         )
     line_items = {}
     parsed_body: dict = app.current_event.json_body or {}
     try:
         line_items = stripe.checkout.Session.retrieve(
-            parsed_body['data']['object']['id'],
-            expand=['line_items'],
+            parsed_body["data"]["object"]["id"],
+            expand=["line_items"],
         ).line_items
         if not line_items:
             raise ValueError("line_items is None")
@@ -194,38 +218,40 @@ def provision_member():
         return Response(
             status_code=421,
             content_type=content_types.APPLICATION_JSON,
-            body={"message": "Could not get line items for transaction."}
+            body={"message": "Could not get line items for transaction."},
         )
 
     isMembershipEvent = False
     try:
-        for item in line_items['data']:
-            if item['price']['product'] == MEMBERSHIP_PRODUCT_ID: # type: ignore
+        for item in line_items["data"]:
+            if item["price"]["product"] == MEMBERSHIP_PRODUCT_ID:  # type: ignore
                 isMembershipEvent = True
         if isMembershipEvent:
             logger.info("Found Membership Event")
-            email = parsed_body['data']['object']['customer_details']['email'].lower()
+            email = parsed_body["data"]["object"]["customer_details"]["email"].lower()
             logger.info("Found subscriber: " + email)
         else:
             return Response(
                 status_code=200,
                 content_type=content_types.APPLICATION_JSON,
-                body={"message": "Not a membership event."}
+                body={"message": "Not a membership event."},
             )
     except Exception:
         logger.error("Error getting line items: " + traceback.format_exc())
         return Response(
             status_code=400,
             content_type=content_types.APPLICATION_JSON,
-            body={"message": "No email in purchase payload."}
+            body={"message": "No email in purchase payload."},
         )
-    entra_token = get_entra_access_token(global_credentials)['access_token']
+    entra_token = get_entra_access_token(global_credentials)["access_token"]
     response_object = {}
     current_timestamp = datetime.datetime.now().isoformat()
     netid = email.split("@")[0]
     if wait_for_upn(entra_token, netid, oneshot=True):
         logger.info("Email already exists, not inviting: " + email)
-        response_object = {"message": f"Added (without inviting) {email} to paid members group"}
+        response_object = {
+            "message": f"Added (without inviting) {email} to paid members group"
+        }
     else:
         logger.info("Inviting " + email + " to tenant")
         try:
@@ -235,7 +261,9 @@ def provision_member():
             return Response(
                 status_code=500,
                 content_type=content_types.APPLICATION_JSON,
-                body={"message": "Could not invite to tenant, erroring so Stripe retries the event."}
+                body={
+                    "message": "Could not invite to tenant, erroring so Stripe retries the event."
+                },
             )
     upn = None
     try:
@@ -246,7 +274,7 @@ def provision_member():
         return Response(
             status_code=500,
             content_type=content_types.APPLICATION_JSON,
-            body={"message": str(e)}
+            body={"message": str(e)},
         )
     internal_upn = f"{netid}@acm.illinois.edu"
     if upn != internal_upn:
@@ -259,38 +287,44 @@ def provision_member():
             return Response(
                 status_code=500,
                 content_type=content_types.APPLICATION_JSON,
-                body={"message": str(e)}
+                body={"message": str(e)},
             )
     try:
-        logger.info("Adding UPN to Paid Members Group: " + upn)
+        logger.info("Adding UPN to Paid Members Group: " + str(upn))
         add_to_group(entra_token, upn)
         response_object = {"message": f"Added and invited {upn} to paid members group"}
     except Exception:
-        logger.error(f"Error adding {email} to paid members group: " + traceback.format_exc())
+        logger.error(
+            f"Error adding {email} to paid members group: " + traceback.format_exc()
+        )
         return Response(
             status_code=500,
             content_type=content_types.APPLICATION_JSON,
-            body={"message": "Could not add to group, erroring so Stripe retries the event."}
+            body={
+                "message": "Could not add to group, erroring so Stripe retries the event."
+            },
         )
     try:
         logging_table.put_item(
             Item={
-                'email': email,
-                'inserted_at': current_timestamp,
-                'inserted_by': 'membership-api-provisioned'
-            } 
+                "email": email,
+                "inserted_at": current_timestamp,
+                "inserted_by": "membership-api-provisioned",
+            }
         )
     except Exception:
-        logger.warn(f"Failed to log purchase to dynamo for email {email}: " + traceback.format_exc())
-    response_object['inserted_at'] = current_timestamp
+        logger.warn(
+            f"Failed to log purchase to dynamo for email {email}: "
+            + traceback.format_exc()
+        )
+    response_object["inserted_at"] = current_timestamp
+    # call Core API to send the welcome email/pkpass to the member.
+    provision_membership_pkpass(email)
     return Response(
         status_code=201,
         content_type=content_types.APPLICATION_JSON,
-        body=response_object
+        body=response_object,
     )
-
-
-
 
 
 # Templating, ignore
