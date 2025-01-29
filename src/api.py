@@ -319,7 +319,8 @@ def provision_member():
         )
     response_object["inserted_at"] = current_timestamp
     # call Core API to send the welcome email/pkpass to the member.
-    provision_membership_pkpass(email)
+    logger.info(f"Sending welcome email with pkpass to {email}.")
+    provision_membership_pkpass(email, logger)
     logger.info("Sent welcome email with pkpass.")
     return Response(
         status_code=201,
