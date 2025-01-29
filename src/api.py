@@ -17,7 +17,7 @@ from aad import (
     get_entra_access_token,
     wait_for_upn,
 )
-from src.utils.mobileWallet import provision_membership_pkpass
+from utils.mobileWallet import provision_membership_pkpass
 from utils.general import (
     create_checkout_session,
     get_run_environment,
