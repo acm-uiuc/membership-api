@@ -87,6 +87,7 @@ Resources:
       Parameters:
         LambdaFunctionName: !Sub ${ApplicationPrefix}-lambda
         AuthLambdaFunctionName: !Sub ${ApplicationPrefix}-auth-lambda
+        SNSTopicName: !Sub ${ApplicationPrefix}-member-added-topic
 
   AppLogGroups:
     Type: AWS::Serverless::Application
@@ -303,3 +304,8 @@ Resources:
           - ":"
           - !Ref AppApiGateway
           - "/*/*/*"
+
+  MemberAddedSNSTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      TopicName: !Sub ${ApplicationPrefix}-member-added-topic

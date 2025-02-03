@@ -9,6 +9,10 @@ Parameters:
     Default: undefined
     Type: String
     AllowedPattern: ^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$
+  SNSTopicName:
+    Type: String
+    AllowedPattern: ^[a-zA-Z0-9]+[a-zA-Z0-9-]+[a-zA-Z0-9]+$
+
 Conditions:
   AuthorizerFunctionEnabled:
     Fn::Not:
@@ -95,6 +99,15 @@ Resources:
                 - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/infra-membership-api-external-lists
                 - !Sub arn:aws:dynamodb:${AWS::Region}:${AWS::AccountId}:table/infra-membership-api-provisioning-logs
         PolicyName: lambda-dynamo
+      - PolicyDocument:
+          Version: 2012-10-17
+          Statement:
+            - Action:
+                - sns:Publish
+              Effect: Allow
+              Resource:
+                - !Sub arn:aws:sns:${AWS::Region}:${AWS::AccountId}:${SNSTopicName}
+        PolicyName: lambda-sns
 Outputs:
   MainFunctionRoleArn:
     Description: Main API IAM role ARN
